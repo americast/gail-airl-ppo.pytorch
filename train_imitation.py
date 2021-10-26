@@ -2,12 +2,12 @@ import os
 import argparse
 from datetime import datetime
 import torch
-
+import pudb
 from gail_airl_ppo.env import make_env
 from gail_airl_ppo.buffer import SerializedBuffer
 from gail_airl_ppo.algo import ALGOS
 from gail_airl_ppo.trainer import Trainer
-
+import pudb
 
 def run(args):
     env = make_env(args.env_id)
@@ -30,6 +30,7 @@ def run(args):
     log_dir = os.path.join(
         'logs', args.env_id, args.algo, f'seed{args.seed}-{time}')
 
+    # pu.db
     trainer = Trainer(
         env=env,
         env_test=env_test,
