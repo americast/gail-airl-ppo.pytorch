@@ -1,3 +1,6 @@
+# WIP: Multitask AIRL  
+The `Hopper-v3` and `InvertedPendulum-v2` maybe trained together in a multitask setting using `python train_multi.py     --algo multi --cuda --num_steps 100000 --eval_interval 5000 --rollout_length 2000 --seed 0 --buffer buffers/Hopper-v3/size1000000_std0.01_prand0.0.pth`. Please note that some of the command line arguments might be redundant. Evaluation code is yet to be added.
+
 # GAIL and AIRL in PyTorch
 This is a PyTorch implementation of Generative Adversarial Imitation Learning(GAIL)[[1]](#references) and Adversarial Inverse Reinforcement Learning(AIRL)[[2]](#references) based on PPO[[3]](#references). I tried to make it easy for readers to understand the algorithm. Please let me know if you have any questions.
 
