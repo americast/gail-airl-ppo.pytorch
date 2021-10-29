@@ -1,7 +1,8 @@
 import torch
 from torch import nn
-
+import pudb
 from .utils import build_mlp, reparameterize, evaluate_lop_pi
+import sys
 
 
 class StateIndependentPolicy(nn.Module):
@@ -19,7 +20,7 @@ class StateIndependentPolicy(nn.Module):
         self.log_stds = nn.Parameter(torch.zeros(1, action_shape[0]))
 
     def forward(self, states):
-        return torch.tanh(self.net(states))
+            return torch.tanh(self.net(states))
 
     def sample(self, states):
         return reparameterize(self.net(states), self.log_stds)

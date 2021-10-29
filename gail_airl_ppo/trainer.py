@@ -2,7 +2,7 @@ import os
 from time import time, sleep
 from datetime import timedelta
 from torch.utils.tensorboard import SummaryWriter
-
+import numpy as np
 
 class Trainer:
 
@@ -85,7 +85,7 @@ class Trainer:
 
 class Trainer_multi:
 
-    def __init__(self, env_1, env_2, env_multi, env_test, algo, log_dir, seed=0, num_steps=10**5,
+    def __init__(self, env_1, env_2, env_multi, env_test_1, env_test_2, algo, log_dir, seed=0, num_steps=10**5,
                  eval_interval=10**3, num_eval_episodes=5):
         super().__init__()
 
@@ -98,8 +98,10 @@ class Trainer_multi:
         self.env_multi.seed(seed)
 
         # Env for evaluation.
-        self.env_test = env_test
-        self.env_test.seed(2**31-seed)
+        self.env_test_1 = env_test_1
+        self.env_test_1.seed(2**31-seed)
+        self.env_test_2 = env_test_2
+        self.env_test_2.seed(2**31-seed)
 
         self.algo = algo
         self.log_dir = log_dir
@@ -126,6 +128,7 @@ class Trainer_multi:
         state_2 = self.env_2.reset()
 
         for step in range(1, self.num_steps + 1):
+            print(step, end="\r")
             # Pass to the algorithm to update state and episode timestep.
             state_1, state_2, t = self.algo.step(self.env_1, state_1, self.env_2, state_2, t, step)
 
@@ -134,12 +137,11 @@ class Trainer_multi:
                 self.algo.update(self.writer)
 
             # Evaluate regularly.
-            """
             if step % self.eval_interval == 0:
+                print("\n\n")
                 self.evaluate(step)
                 self.algo.save_models(
                     os.path.join(self.model_dir, f'step{step}'))
-            """
 
         # Wait for the logging to be finished.
         sleep(10)
@@ -148,14 +150,24 @@ class Trainer_multi:
         mean_return = 0.0
 
         for _ in range(self.num_eval_episodes):
-            state = self.env_test.reset()
+            state_1 = self.env_test_1.reset()
+            state_2 = self.env_test_2.reset()
             episode_return = 0.0
-            done = False
+            done_1 = done_2 = done = False
 
             while (not done):
-                action = self.algo.exploit(state)
-                state, reward, done, _ = self.env_test.step(action)
-                episode_return += reward
+                state_multi = np.concatenate([state_1, state_2], axis=-1)
+                action_multi = self.algo.exploit(state_multi)
+                action_1 = action_multi[:3]
+                action_2 = action_multi[3:]
+                reward_1 = reward_2 = 0
+                if not done_1:
+                    state_1, reward_1, done_1, _ = self.env_test_1.step(action_1)
+                    episode_return += 0.5 * reward_1
+                if not done_2:
+                    state_2, reward_2, done_2, _ = self.env_test_2.step(action_2)
+                    episode_return += 0.5 * reward_2
+                if done_1 and done_2: done = True
 
             mean_return += episode_return / self.num_eval_episodes
 

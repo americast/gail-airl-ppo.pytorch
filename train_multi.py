@@ -49,14 +49,15 @@ def run(args):
 
     time = datetime.now().strftime("%Y%m%d-%H%M")
     log_dir = os.path.join(
-        'logs', args.env_id, args.algo, f'seed{args.seed}-{time}')
+        'logs', "multi", args.algo, f'seed{args.seed}-{time}')
 
     # pu.db
     trainer = Trainer_multi(
         env_1=env_1,
         env_2=env_2,
         env_multi=env_multi,
-        env_test=env_1,
+        env_test_1=env_test_1,
+        env_test_2=env_test_2,
         algo=algo,
         log_dir=log_dir,
         num_steps=args.num_steps,
