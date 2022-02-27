@@ -2,7 +2,7 @@ import os
 import torch
 from torch import nn
 from torch.optim import Adam
-
+from gail_airl_ppo.network import AIRLDiscrim
 from .base import Algorithm
 from gail_airl_ppo.buffer import Buffer
 from gail_airl_ppo.utils import soft_update, disable_gradient
@@ -16,9 +16,24 @@ class SAC(Algorithm):
     def __init__(self, state_shape, action_shape, device, seed, gamma=0.99,
                  batch_size=256, buffer_size=10**6, lr_actor=3e-4,
                  lr_critic=3e-4, lr_alpha=3e-4, units_actor=(256, 256),
-                 units_critic=(256, 256), start_steps=10000, tau=5e-3):
+                 units_critic=(256, 256), start_steps=10000, tau=5e-3, from_disc=False):
         super().__init__(state_shape, action_shape, device, seed, gamma)
 
+        self.from_disc = from_disc
+        if self.from_disc is not False:
+            units_disc_r=(100, 100)
+            units_disc_v=(100, 100)
+            self.disc = AIRLDiscrim(
+                state_shape=state_shape,
+                gamma=gamma,
+                hidden_units_r=units_disc_r,
+                hidden_units_v=units_disc_v,
+                hidden_activation_r=nn.ReLU(inplace=True),
+                hidden_activation_v=nn.ReLU(inplace=True)
+            ).to(device)
+            self.disc.load_state_dict(torch.load(self.from_disc))
+            self.disc.eval()
+            print("Successfully initialized old discriminator for rewards.")
         # Replay buffer.
         self.buffer = Buffer(
             buffer_size=buffer_size,
@@ -79,6 +94,7 @@ class SAC(Algorithm):
             action = self.explore(state)[0]
 
         next_state, reward, done, _ = env.step(action)
+
         mask = False if t == env._max_episode_steps else done
 
         self.buffer.append(state, action, reward, mask, next_state)
@@ -104,6 +120,8 @@ class SAC(Algorithm):
         curr_qs1, curr_qs2 = self.critic(states, actions)
         with torch.no_grad():
             next_actions, log_pis = self.actor.sample(next_states)
+            if self.from_disc is not False:
+                rewards = self.disc.calculate_reward(states, dones, log_pis, next_states)
             next_qs1, next_qs2 = self.critic_target(next_states, next_actions)
             next_qs = torch.min(next_qs1, next_qs2) - self.alpha * log_pis
         target_qs = rewards + (1.0 - dones) * self.gamma * next_qs
@@ -123,6 +141,7 @@ class SAC(Algorithm):
 
     def update_actor(self, states, writer):
         actions, log_pis = self.actor.sample(states)
+
         qs1, qs2 = self.critic(states, actions)
         loss_actor = self.alpha * log_pis.mean() - torch.min(qs1, qs2).mean()
 
@@ -172,7 +191,7 @@ class SACExpert(SAC):
             hidden_units=units_actor,
             hidden_activation=nn.ReLU(inplace=True)
         ).to(device)
-        self.actor.load_state_dict(torch.load(path))
+        self.actor.load_state_dict(torch.load(path, map_location=torch.device('cpu')) )
 
         disable_gradient(self.actor)
         self.device = device

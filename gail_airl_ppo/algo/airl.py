@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.optim import Adam
-
+from datetime import datetime
 from .ppo import PPO
 from gail_airl_ppo.network import AIRLDiscrim
 
@@ -100,3 +100,6 @@ class AIRL(PPO):
                 acc_exp = (logits_exp > 0).float().mean().item()
             writer.add_scalar('stats/acc_pi', acc_pi, self.learning_steps)
             writer.add_scalar('stats/acc_exp', acc_exp, self.learning_steps)
+        dt = str(datetime.now())
+        print("latest save: "+dt)
+        torch.save(self.disc.state_dict(), "weights/disc_"+dt+".pth")
